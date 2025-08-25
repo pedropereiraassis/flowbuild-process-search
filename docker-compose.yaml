@@ -1,0 +1,110 @@
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.1.2
+    container_name: elasticsearch
+    volumes:
+      - dev-elasticsearch:/usr/share/elasticsearch/data
+    ports:
+      - 9200:9200
+    environment:
+      - discovery.type=single-node
+      - ELASTIC_PASSWORD=elasticsearch
+      - xpack.security.enabled=true
+      - xpack.security.http.ssl.enabled=false
+      - xpack.license.self_generated.type=trial
+      - xpack.ml.use_auto_machine_memory_percent=true
+      - ES_JAVA_OPTS=-Xms128m -Xmx2g
+      - cluster.routing.allocation.disk.watermark.low=1gb
+      - cluster.routing.allocation.disk.watermark.high=1gb
+      - cluster.routing.allocation.disk.watermark.flood_stage=1gb
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'curl --output /dev/null --silent --head --fail -u elastic:elasticsearch http://elasticsearch:9200',
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+
+  kibana_settings:
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.1.2
+    container_name: kibana_settings
+    restart: 'no'
+    command: >
+      bash -c '
+        echo "Setup the kibana_system password";
+        start_time=$$(date +%s);
+        timeout=60;
+        until curl -s -u "elastic:elasticsearch" -X POST http://elasticsearch:9200/_security/user/kibana_system/_password -d "{\"password\":\"kibana\"}" -H "Content-Type: application/json" | grep -q "^{}"; do
+          if [ $$(($$(date +%s) - $$start_time)) -ge $$timeout ]; then
+            echo "Error: Elasticsearch timeout";
+            exit 1;
+          fi;
+          sleep 2;
+        done;
+      '
+
+  kibana:
+    depends_on:
+      kibana_settings:
+        condition: service_completed_successfully
+    image: docker.elastic.co/kibana/kibana:9.1.2
+    container_name: kibana
+    volumes:
+      - dev-kibana:/usr/share/kibana/data
+      - ./config/telemetry.yml:/usr/share/kibana/config/telemetry.yml
+    ports:
+      - 5601:5601
+    environment:
+      - SERVER_NAME=kibana
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - ELASTICSEARCH_USERNAME=kibana_system
+      - ELASTICSEARCH_PASSWORD=kibana
+      - XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY=cvaEV9NemWPbufVBnc8dxxAQc7rsAYuw
+      - ELASTICSEARCH_PUBLICBASEURL=http://localhost:9200
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          "curl -s -I http://kibana:5601 | grep -q 'HTTP/1.1 302 Found'",
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+
+  app:
+    image: node:20-slim
+    container_name: flowbuild_process_search_app
+    env_file:
+      - .env.development
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    ports:
+      - '4000:4000'
+    command: sh -c "npm install && npm run dev"
+    working_dir: /usr/app
+    volumes:
+      - .:/usr/app
+    restart: on-failure
+    # network_mode: "host" # For linux; on Mac/Windows, use the extra_hosts below
+    # extra_hosts:
+    #   - "host.docker.internal:172.17.0.1"
+    networks:
+      - fb-network
+
+volumes:
+  dev-elasticsearch:
+  dev-kibana:
+
+networks:
+  fb-network:
+    driver: bridge

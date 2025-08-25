@@ -1,0 +1,45 @@
+{
+  "name": "flowbuild-process-search",
+  "version": "0.1.0",
+  "description": "Project to optimize flowbuild processes search.",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "nodemon --exec ts-node -r tsconfig-paths/register ./src/infra/api/server.ts",
+    "format": "prettier --ignore-path .gitignore --write \"**/*.+(ts)\"",
+    "lint": "eslint . --ext .ts",
+    "start": "node dist/src/infra/api/server.js",
+    "test": "jest --silent --runInBand --verbose"
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/express": "5.0.3",
+    "@types/jest": "30.0.0",
+    "@types/node": "24.3.0",
+    "@types/pg": "8.15.5",
+    "@typescript-eslint/eslint-plugin": "7.18.0",
+    "@typescript-eslint/parser": "7.18.0",
+    "eslint": "8.57.0",
+    "eslint-config-prettier": "9.1.0",
+    "jest": "30.0.5",
+    "nodemon": "3.1.10",
+    "prettier": "2.8.8",
+    "ts-node": "10.9.2",
+    "tsc-alias": "1.8.10",
+    "tsconfig-paths": "4.2.0",
+    "typescript": "5.9.2"
+  },
+  "dependencies": {
+    "@elastic/elasticsearch": "9.1.1",
+    "@xenova/transformers": "2.17.2",
+    "dotenv": "17.2.1",
+    "express": "5.1.0",
+    "knex": "3.1.0",
+    "node-cron": "4.2.1",
+    "pg": "8.16.3",
+    "ts-jest": "29.4.1",
+    "winston": "3.14.1",
+    "zod": "4.1.3"
+  }
+}
