@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express'
 import { logger } from '@src/utils/logger'
-import { searchProcessesIndex } from '../elasticsearch/searchProcessesIndex'
+import { searchProcessesIndex } from '@src/infra/elasticsearch/searchProcessesIndex'
 
 export async function searchProcesses(req: Request, res: Response) {
   logger.info('Called searchProcesses controller')

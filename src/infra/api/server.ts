@@ -1,10 +1,9 @@
 import cron from 'node-cron'
-
-import app from './express'
 import { envs } from '@src/config/envs'
-import { indexFlowBuildProcesses } from '@src/jobs/indexFlowBuildProcesses'
 import { logger } from '@src/utils/logger'
-import { createIndex } from '../elasticsearch/processIndex'
+import { indexFlowBuildProcesses } from '@src/jobs/indexFlowBuildProcesses'
+import app from '@src/infra/api/express'
+import { createIndex } from '@src/infra/elasticsearch/processIndex'
 
 const PORT: number = parseInt(envs.BACKEND_PORT, 10)
 

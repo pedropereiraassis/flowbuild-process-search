@@ -1,5 +1,5 @@
 import { Client } from '@elastic/elasticsearch'
-import { envs } from '@config/envs'
+import { envs } from '@src/config/envs'
 
 const esClient = new Client({
   node: envs.ELASTICSEARCH_API,

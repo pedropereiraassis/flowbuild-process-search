@@ -1,4 +1,4 @@
-import { GenericObject } from "@src/types"
+import { GenericObject } from "@src/config/types"
 
 export function flattenJSONToString(data: GenericObject | GenericObject[]): string {
   if (typeof data === 'object' && data !== null) {

@@ -1,4 +1,4 @@
-import { database } from './knexfile'
+import { database } from '@src/infra/db/knexfile'
 
 export async function fetchFinishedProcessesWithExceptions(
   exceptionIds: string[]

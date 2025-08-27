@@ -27,18 +27,6 @@
       "@src/*": [
         "src/*"
       ],
-      "@jobs/*": [
-        "src/jobs/*"
-      ],
-      "@jobs": [
-        "src/jobs"
-      ],
-      "@config/*": [
-        "src/config/*"
-      ],
-      "@tests/*": [
-        "tests/*"
-      ]
     }
   }
 }

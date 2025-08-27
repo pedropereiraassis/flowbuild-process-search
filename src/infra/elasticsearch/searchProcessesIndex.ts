@@ -1,6 +1,6 @@
 import { envs } from '@src/config/envs'
+import { ProcessDocument } from '@src/config/types'
 import { logger } from '@src/utils/logger'
-import { ProcessDocument } from '@src/types'
 import esClient from '@src/infra/elasticsearch/client'
 import { buildRetrieverQueries } from '@src/infra/elasticsearch/queryBuilder'
 

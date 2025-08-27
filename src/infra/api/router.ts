@@ -1,6 +1,6 @@
 import express from 'express'
-import { searchProcesses } from './controller'
-import { validateSearchRequest } from './validator'
+import { searchProcesses } from '@src/infra/api/controller'
+import { validateSearchRequest } from '@src/infra/api/validator'
 
 const router = express.Router()
 

@@ -1,15 +1,15 @@
-import { logger } from '@src/utils/logger'
-import { indexProcess } from '@src/infra/elasticsearch/processIndex'
-// import { flattenJSONToString } from '@src/utils/flattenJSONToString'
-import { ProcessDocument } from '@src/types'
-import esClient from '@src/infra/elasticsearch/client'
 import { envs } from '@src/config/envs'
+import { ProcessDocument } from '@src/config/types'
+import { logger } from '@src/utils/logger'
+import { mapStatesToHistory } from '@src/utils/processDiff'
+// import { flattenJSONToString } from '@src/utils/flattenJSONToString'
 import {
   fetchFinishedProcessesWithExceptions,
   fetchProcessStatesByProcessId,
   fetchWorkflow,
 } from '@src/infra/db/flowbuildDataSource'
-import { mapStatesToHistory } from '@src/utils/processDiff'
+import esClient from '@src/infra/elasticsearch/client'
+import { indexProcess } from '@src/infra/elasticsearch/processIndex'
 
 export async function indexFlowBuildProcesses() {
   logger.info('Checking for finished processes...')

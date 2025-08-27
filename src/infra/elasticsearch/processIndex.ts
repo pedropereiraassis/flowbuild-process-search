@@ -1,7 +1,7 @@
-import { envs } from '@config/envs'
-import esClient from './client'
-import { logger } from '../../utils/logger'
-import { ProcessDocument } from '@src/types'
+import { envs } from '@src/config/envs'
+import { ProcessDocument } from '@src/config/types'
+import { logger } from '@src/utils/logger'
+import esClient from '@src/infra/elasticsearch/client'
 
 export async function createIndex(index: string) {
   const exists = await esClient.indices.exists({ index: index })
