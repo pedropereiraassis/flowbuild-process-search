@@ -60,7 +60,6 @@ services:
     container_name: kibana
     volumes:
       - dev-kibana:/usr/share/kibana/data
-      - ./config/telemetry.yml:/usr/share/kibana/config/telemetry.yml
     ports:
       - 5601:5601
     environment:

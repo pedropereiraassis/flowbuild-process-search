@@ -14,6 +14,4 @@ export const envs = {
   ELASTICSEARCH_USERNAME: process.env.ELASTICSEARCH_USERNAME ?? 'elastic',
   ELASTICSEARCH_PASSWORD: process.env.ELASTICSEARCH_PASSWORD ?? 'elasticsearch',
   PROCESSES_INDEX: process.env.PROCESSES_INDEX ?? 'processes',
-  NODE_ENV: process.env.NODE_ENV,
-  NODE_OPTIONS: process.env.NODE_OPTIONS ?? '--max-old-space-size=1024',
 }
