@@ -1,27 +1,38 @@
 import { envs } from '@src/config/envs'
 import { logger } from '@src/utils/logger'
-import { GenericObject } from '@src/types'
+import { ProcessDocument } from '@src/types'
 import esClient from '@src/infra/elasticsearch/client'
 import { buildRetrieverQueries } from '@src/infra/elasticsearch/queryBuilder'
 
 export interface SearchQueryInput {
-  finalBag?: string
-  history?: string
+  query: {
+    finalBag?: string
+    history?: string
+    general?: string
+  }
   limit?: number
 }
 
-export async function searchProcessesIndex(query: SearchQueryInput) {
-  const { finalBag, history, limit = 10 } = query
+export async function searchProcessesIndex(input: SearchQueryInput) {
+  const {
+    query: { finalBag, history, general },
+    limit = 10,
+  } = input
 
   const retrievers = buildRetrieverQueries({
     finalBag,
     history,
+    general,
   })
 
   const searchParams = {
     index: envs.PROCESSES_INDEX,
     size: limit,
-    _source_excludes: ['final_bag_text', 'final_result_text', 'history_text'],
+    _source_excludes: [
+      'final_bag_text',
+      'final_actor_data_text',
+      'history_text',
+    ],
     retriever: {
       rrf: {
         retrievers,
@@ -33,7 +44,7 @@ export async function searchProcessesIndex(query: SearchQueryInput) {
   try {
     logger.verbose('Executing search on processes index', searchParams)
 
-    const result = await esClient.search(searchParams)
+    const result = await esClient.search<ProcessDocument>(searchParams)
 
     const topScore =
       result.hits?.max_score || result.hits?.hits?.[0]?._score || 0
@@ -43,8 +54,10 @@ export async function searchProcessesIndex(query: SearchQueryInput) {
     const hits = (result.hits?.hits || [])
       .filter((hit) => hit._score && hit._score >= cutoff)
       .map((hit) => {
-        const source: GenericObject = hit._source ?? {}
-        source._score = hit._score
+        const source  = {
+          _score: hit._score,
+          ...hit._source,
+        }
         return source
       })
 

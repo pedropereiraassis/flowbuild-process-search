@@ -15,15 +15,15 @@ export async function createIndex(index: string) {
           workflow_id: { type: 'keyword' },
           workflow_name: { type: 'keyword' },
           workflow_version: { type: 'keyword' },
-          workflow_is_latest: { type: 'boolean' },
           final_status: { type: 'keyword' },
           started_at: { type: 'date' },
           finished_at: { type: 'date' },
-          last_actor_id: { type: 'keyword' },
-          searchable_text: { type: 'text' },
-          final_result: { type: 'flattened' },
-          final_result_text: { type: 'text', copy_to: 'final_result_semantic' },
-          final_result_semantic: { type: 'semantic_text' },
+          final_actor_data: { type: 'flattened' },
+          final_actor_data_text: {
+            type: 'text',
+            copy_to: 'final_actor_data_semantic',
+          },
+          final_actor_data_semantic: { type: 'semantic_text' },
           final_bag: { type: 'flattened' },
           final_bag_text: { type: 'text', copy_to: 'final_bag_semantic' },
           final_bag_semantic: { type: 'semantic_text' },
@@ -35,6 +35,8 @@ export async function createIndex(index: string) {
     })
     logger.info(`Created index [${index}]`)
   }
+
+  logger.info(`Index [${index}] already exists`)
 }
 
 export async function indexProcess(processDocument: ProcessDocument) {
@@ -50,6 +52,6 @@ export async function indexProcess(processDocument: ProcessDocument) {
 
     logger.info(`Indexed process: ${processDocument.id}`)
   } catch (err) {
-    logger.error('Indexing error', err)
+    logger.error(`Indexing process error: ${processDocument.id} - `, err)
   }
 }

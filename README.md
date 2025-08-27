@@ -1,4 +1,5 @@
 # Flowbuild Search Service
+
 This project demonstrates a viable and scalable approach for searching finished FlowBuild processes using a decoupled service powered by Elasticsearch, NodeJS, and **Elasticsearch's built-in hybrid and semantic search capabilities.**
 
 ## How it Works (Elasticsearch Native Hybrid/Semantic Search)
@@ -14,12 +15,29 @@ This project demonstrates a viable and scalable approach for searching finished 
 ## Getting Started
 
 ### Prerequisites
+
 - Docker and Docker Compose
 - FlowBuild Database available and accessible through the connection variables in `.env.development`
 
-### 1. Setup
+### 1. Run Elasticsearch and Kibana with Docker
+
+Run elasticsearch and Kibana services:
+
+```bash
+docker compose up -d
+```
+
+### 2. Install dependencies and run the service
+
+```bash
+npm install
+npm run dev
+```
+
+### (Optional) Run all with docker:
 
 Add a new network for the flowbuild database on the project's `docker-compose.yaml` file:
+
 ```yaml
 services:
   postgres:
@@ -34,8 +52,237 @@ networks:
     driver: bridge
 ```
 
-Run all services:
+Then uncomment the `app` service and `networks` sections in this service and run all with:
+
 ```bash
 docker compose up -d
 ```
 
+## Usage
+
+The service exposes a REST API endpoint to perform searches on indexed FlowBuild processes.
+
+### Search Endpoint
+
+- **URL:** `/search`
+- **Method:** `POST`
+- **Request Body:**
+  ```json
+  {
+    "query": {
+      // Only one of the fields must be provided
+      "history": "search terms here", // search in the processes history (mapped and reduced)
+      "finalBag": "search terms here", // search in the final bag of processes
+      "general": "search terms here" // general search on both history and final bag
+    },
+    "limit": 10
+  }
+  ```
+- **Response:**
+  ```json
+    [
+      {
+        "_score": 0.032786883,
+        "id": "22181520-833e-11f0-b9b4-872e53f42b3a",
+        "workflow_id": "7be513f4-98dc-43e2-8f3a-66e68a61aca8",
+        "workflow_name": "pizza1",
+        "workflow_version": 1,
+        "final_status": "finished",
+        "started_at": "2025-08-27T12:05:33.171Z",
+        "finished_at": "2025-08-27T12:05:38.666Z",
+        ...
+      }
+    ]
+  ```
+
+<details>
+<summary>Show full response example</summary>
+
+```json
+[
+  {
+    "_score": 0.032786883,
+    "id": "22181520-833e-11f0-b9b4-872e53f42b3a",
+    "workflow_id": "7be513f4-98dc-43e2-8f3a-66e68a61aca8",
+    "workflow_name": "pizza1",
+    "workflow_version": 1,
+    "final_status": "finished",
+    "started_at": "2025-08-27T12:05:33.171Z",
+    "finished_at": "2025-08-27T12:05:38.666Z",
+    "final_actor_data": {
+      "trace": {
+        "traceparent": "00-2d4354788acec09833bbc1fb429a8b95-03720daa3984e682-01"
+      },
+      "claims": [],
+      "extData": {
+        "exp": 1761694164,
+        "iat": 1755694164
+      },
+      "actor_id": "fcca3ac2d6d14f7db9330b0d77b26558",
+      "requestIp": "::ffff:172.23.0.1",
+      "userAgent": {
+        "os": "unknown",
+        "browser": "PostmanRuntime",
+        "version": "7.45.0",
+        "isMobile": false,
+        "platform": "unknown"
+      },
+      "session_id": "lc_0V125RpedI13KSdV7U"
+    },
+    "final_bag": {
+      "pizzas": {
+        "qty": 2,
+        "olives": false,
+        "flavors": ["mussarela", "pepperoni"]
+      },
+      "client1": "teste",
+      "comment": "check if there are 2 pizzas in the bag",
+      "confirm": 5,
+      "orderNo": 5
+    },
+    "history": [
+      {
+        "node_id": "1",
+        "next_node_id": "1",
+        "step_number": 1,
+        "bag": {},
+        "result": {},
+        "external_input": {},
+        "actor_data": {
+          "trace": {
+            "traceparent": "00-2d4354788acec09833bbc1fb429a8b95-03720daa3984e682-01"
+          },
+          "claims": [],
+          "extData": {
+            "exp": 1761694164,
+            "iat": 1755694164
+          },
+          "actor_id": "fcca3ac2d6d14f7db9330b0d77b26558",
+          "requestIp": "::ffff:172.23.0.1",
+          "userAgent": {
+            "os": "unknown",
+            "browser": "PostmanRuntime",
+            "version": "7.45.0",
+            "isMobile": false,
+            "platform": "unknown"
+          },
+          "session_id": "lc_0V125RpedI13KSdV7U"
+        },
+        "error": null
+      },
+      {
+        "step_number": 2,
+        "node_id": "1",
+        "next_node_id": "2",
+        "status": "running",
+        "error": null,
+        "changes": {
+          "result.step_number": 2,
+          "time_elapsed": "1"
+        }
+      },
+      {
+        "step_number": 3,
+        "node_id": "2",
+        "next_node_id": "3",
+        "status": "running",
+        "error": null,
+        "changes": {
+          "bag.pizzas": {
+            "qty": 2,
+            "olives": false,
+            "flavors": ["mussarela", "pepperoni"]
+          },
+          "bag.client1": "teste",
+          "result.step_number": 3,
+          "external_input": null,
+          "time_elapsed": null
+        }
+      },
+      {
+        "step_number": 4,
+        "node_id": "3",
+        "next_node_id": "4",
+        "status": "running",
+        "error": null,
+        "changes": {
+          "bag.orderNo": 5,
+          "result.step_number": 4
+        }
+      },
+      {
+        "step_number": 5,
+        "node_id": "4",
+        "next_node_id": "5",
+        "status": "pending",
+        "error": null,
+        "changes": {
+          "result.timeout": 5,
+          "result.actor_data": {
+            "trace": {
+              "traceparent": "00-2d4354788acec09833bbc1fb429a8b95-03720daa3984e682-01"
+            },
+            "claims": [],
+            "extData": {
+              "exp": 1761694164,
+              "iat": 1755694164
+            },
+            "actor_id": "fcca3ac2d6d14f7db9330b0d77b26558",
+            "requestIp": "::ffff:172.23.0.1",
+            "userAgent": {
+              "os": "unknown",
+              "browser": "PostmanRuntime",
+              "version": "7.45.0",
+              "isMobile": false,
+              "platform": "unknown"
+            },
+            "session_id": "lc_0V125RpedI13KSdV7U"
+          },
+          "result.process_id": "22181520-833e-11f0-b9b4-872e53f42b3a",
+          "result.step_number": 5,
+          "time_elapsed": "4"
+        }
+      },
+      {
+        "step_number": 6,
+        "node_id": "5",
+        "next_node_id": "6",
+        "status": "running",
+        "error": null,
+        "changes": {
+          "bag.comment": "check if there are 2 pizzas in the bag",
+          "result.step_number": 6,
+          "time_elapsed": null
+        }
+      },
+      {
+        "step_number": 7,
+        "node_id": "6",
+        "next_node_id": "7",
+        "status": "running",
+        "error": null,
+        "changes": {
+          "bag.confirm": 5,
+          "result.step_number": 7
+        }
+      },
+      {
+        "step_number": 8,
+        "node_id": "7",
+        "next_node_id": null,
+        "status": "finished",
+        "error": null,
+        "changes": {
+          "result.step_number": 8,
+          "result.timeout": null,
+          "result.actor_data": null,
+          "result.process_id": null,
+          "time_elapsed": "1"
+        }
+      }
+    ]
+  }
+]
+```
+
+</details>

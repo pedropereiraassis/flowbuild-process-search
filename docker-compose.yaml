@@ -80,31 +80,28 @@ services:
       timeout: 10s
       retries: 30
 
-  app:
-    image: node:20-slim
-    container_name: flowbuild_process_search_app
-    env_file:
-      - .env.development
-    depends_on:
-      elasticsearch:
-        condition: service_healthy
-    ports:
-      - '4000:4000'
-    command: sh -c "npm install && npm run dev"
-    working_dir: /usr/app
-    volumes:
-      - .:/usr/app
-    restart: on-failure
-    # network_mode: "host" # For linux; on Mac/Windows, use the extra_hosts below
-    # extra_hosts:
-    #   - "host.docker.internal:172.17.0.1"
-    networks:
-      - fb-network
+  # app:
+  #   image: node:20-slim
+  #   container_name: flowbuild_process_search_app
+  #   env_file:
+  #     - .env.docker
+  #   depends_on:
+  #     elasticsearch:
+  #       condition: service_healthy
+  #   ports:
+  #     - '4000:4000'
+  #   command: sh -c "npm install && npm run dev"
+  #   working_dir: /usr/app
+  #   volumes:
+  #     - .:/usr/app
+  #   restart: on-failure
+    # networks:
+    #   - fb-network
 
 volumes:
   dev-elasticsearch:
   dev-kibana:
 
-networks:
-  fb-network:
-    driver: bridge
+# networks:
+#   fb-network:
+#     driver: bridge

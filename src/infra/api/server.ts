@@ -2,14 +2,21 @@ import cron from 'node-cron'
 
 import app from './express'
 import { envs } from '@src/config/envs'
-import { etl } from '@src/jobs/etl'
+import { indexFlowBuildProcesses } from '@src/jobs/indexFlowBuildProcesses'
 import { logger } from '@src/utils/logger'
+import { createIndex } from '../elasticsearch/processIndex'
 
 const PORT: number = parseInt(envs.BACKEND_PORT, 10)
 
-const task = cron.schedule('* * * * *', etl, { noOverlap: true })
-task.execute()
+;(async () => {
+  await createIndex(envs.PROCESSES_INDEX)
 
-app.listen(PORT, () => {
-  logger.info(`FlowBuild Process Search app running on port ${PORT} 🚀`)
-})
+  const task = cron.schedule('* * * * *', indexFlowBuildProcesses, {
+    noOverlap: true,
+  })
+  task.execute()
+
+  app.listen(PORT, () => {
+    logger.info(`FlowBuild Process Search app running on port ${PORT} 🚀`)
+  })
+})()

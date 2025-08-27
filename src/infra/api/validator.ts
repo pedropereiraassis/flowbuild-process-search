@@ -11,10 +11,30 @@ export function validateSearchRequest(
       .object({
         finalBag: z.string().optional(),
         history: z.string().optional(),
+        general: z.string().optional(),
       })
-      .refine((data) => data.finalBag || data.history, {
-        error: 'At least one of finalBag or history is required',
-      }),
+      .superRefine((data, ctx) => {
+        const definedProps = [data.finalBag, data.history, data.general].filter(
+          (val) => val !== undefined
+        )
+
+        if (definedProps.length > 1) {
+          ctx.addIssue({
+            code: "custom",
+            message:
+              'Only one of finalBag, history, or general must be present.',
+          })
+        }
+
+        if (definedProps.length === 0) {
+          ctx.addIssue({
+            code: "custom",
+            message:
+              'One of finalBag, history, or general must be present.',
+          })
+        }
+      })
+      ,
     limit: z.number().int().optional(),
   })
 

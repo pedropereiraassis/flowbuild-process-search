@@ -1,5 +1,5 @@
 import dotenv from 'dotenv'
-dotenv.config()
+dotenv.config({ path: '.env.development' })
 
 export const envs = {
   LOG_LEVEL: process.env.LOG_LEVEL ?? 'info',

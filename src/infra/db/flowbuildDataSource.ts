@@ -16,3 +16,7 @@ export async function fetchProcessStatesByProcessId(processId: string) {
     .where('process_id', processId)
     .orderBy('created_at', 'asc')
 }
+
+export async function fetchWorkflow(id: string) {
+  return await database.table('workflow').where('id', id).first()
+}

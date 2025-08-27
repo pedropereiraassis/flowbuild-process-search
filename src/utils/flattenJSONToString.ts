@@ -1,12 +1,6 @@
-type JsonValue =
-  | string
-  | number
-  | boolean
-  | null
-  | { [key: string]: JsonValue }
-  | JsonValue[]
+import { GenericObject } from "@src/types"
 
-export function flattenJSONToString(data: JsonValue): string {
+export function flattenJSONToString(data: GenericObject | GenericObject[]): string {
   if (typeof data === 'object' && data !== null) {
     if (Array.isArray(data)) {
       return data.map((item) => flattenJSONToString(item)).join(' ')
