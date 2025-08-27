@@ -327,6 +327,6 @@ The service exposes a REST API endpoint to perform searches on indexed FlowBuild
 
 
 ## Demo
-<video src="public/demo.mp4" controls width="600">
-  Demo video.
-</video>
+If you want to see a demo of the search service in action, check out this video:
+
+[Download/view demo video](public/demo.mp4)
