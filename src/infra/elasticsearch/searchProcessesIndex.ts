@@ -1,5 +1,6 @@
 import { envs } from '@src/config/envs'
 import { ProcessDocument } from '@src/config/types'
+import { HITS_MIN_SCORE, HITS_THRESHOLD } from '@src/config/constants'
 import { logger } from '@src/utils/logger'
 import esClient from '@src/infra/elasticsearch/client'
 import { buildRetrieverQueries } from '@src/infra/elasticsearch/queryBuilder'
@@ -11,13 +12,17 @@ export interface SearchQueryInput {
     general?: string
   }
   limit?: number
+  minScore?: number
+  threshold?: number
 }
 
-export async function searchProcessesIndex(input: SearchQueryInput) {
-  const {
-    query: { finalBag, history, general },
-    limit = 10,
-  } = input
+export async function searchProcessesIndex({
+  query,
+  limit = 10,
+  minScore = HITS_MIN_SCORE,
+  threshold = HITS_THRESHOLD,
+}: SearchQueryInput) {
+  const { finalBag, history, general } = query
 
   const retrievers = buildRetrieverQueries({
     finalBag,
@@ -49,12 +54,15 @@ export async function searchProcessesIndex(input: SearchQueryInput) {
     const topScore =
       result.hits?.max_score || result.hits?.hits?.[0]?._score || 0
 
-    const cutoff = topScore * 0.8 // We can adjust this threshold as needed
+    const cutoff = topScore * threshold
 
     const hits = (result.hits?.hits || [])
-      .filter((hit) => hit._score && hit._score >= cutoff)
+      .filter(
+        (hit) =>
+          hit._score && hit._score >= minScore && hit._score >= cutoff
+      )
       .map((hit) => {
-        const source  = {
+        const source = {
           _score: hit._score,
           ...hit._source,
         }

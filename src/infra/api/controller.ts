@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express'
+import { HITS_MIN_SCORE, HITS_THRESHOLD } from '@src/config/constants'
 import { logger } from '@src/utils/logger'
 import { searchProcessesIndex } from '@src/infra/elasticsearch/searchProcessesIndex'
 
@@ -6,14 +7,19 @@ export async function searchProcesses(req: Request, res: Response) {
   logger.info('Called searchProcesses controller')
 
   try {
-    const { query, limit = 10 } = req.body
+    const { query, minScore, limit } = req.body
 
-    const result = await searchProcessesIndex({
+    const results = await searchProcessesIndex({
       query,
       limit,
+      minScore: minScore ?? HITS_MIN_SCORE,
+      threshold: HITS_THRESHOLD,
     })
 
-    return res.status(200).json(result)
+    return res.status(200).json({
+      count: results.length,
+      results,
+    })
   } catch (error) {
     logger.error('Search error', error)
 

@@ -9,9 +9,9 @@ export function validateSearchRequest(
   const schema = z.object({
     query: z
       .object({
-        finalBag: z.string().optional(),
-        history: z.string().optional(),
-        general: z.string().optional(),
+        finalBag: z.string().min(1).optional(),
+        history: z.string().min(1).optional(),
+        general: z.string().min(1).optional(),
       })
       .superRefine((data, ctx) => {
         const definedProps = [data.finalBag, data.history, data.general].filter(
@@ -20,7 +20,7 @@ export function validateSearchRequest(
 
         if (definedProps.length > 1) {
           ctx.addIssue({
-            code: "custom",
+            code: 'custom',
             message:
               'Only one of finalBag, history, or general must be present.',
           })
@@ -28,13 +28,12 @@ export function validateSearchRequest(
 
         if (definedProps.length === 0) {
           ctx.addIssue({
-            code: "custom",
-            message:
-              'One of finalBag, history, or general must be present.',
+            code: 'custom',
+            message: 'One of finalBag, history, or general must be present.',
           })
         }
-      })
-      ,
+      }),
+    minScore: z.number().min(0).optional(),
     limit: z.number().int().optional(),
   })
 
