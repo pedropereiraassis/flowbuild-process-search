@@ -291,6 +291,8 @@ The service exposes a REST API endpoint to perform searches on indexed FlowBuild
 
 - **RAG (Retrieval-Augmented Generation):** Integrate a RAG approach where the search service retrieves relevant process documents and feeds them into a language model (like GPT-4) to generate detailed explanations or summaries based on the retrieved data.
 
+- **Enhance ETL Process:** Improve the ETL process to handle larger datasets, incremental updates, and error handling more robustly. Possibly use third-party ETL tools or frameworks like Kafka Connect or Airbyte.
+
 - **Advanced Filtering:** Implement advanced filtering options in the search API to allow users to filter results based on workflow name, status, date ranges, users, etc.
 
 - **Enhanced Indexing:** Explore more sophisticated indexing strategies, such as indexing specific fields separately or using custom analyzers to improve search relevance.
