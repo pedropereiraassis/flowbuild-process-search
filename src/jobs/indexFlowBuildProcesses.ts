@@ -1,5 +1,5 @@
 import { envs } from '@src/config/envs'
-import { ProcessDocument } from '@src/config/types'
+import { ProcessDocument, Process, GenericObject } from '@src/config/types'
 import { logger } from '@src/utils/logger'
 import { mapStatesToHistory } from '@src/utils/processDiff'
 // import { flattenJSONToString } from '@src/utils/flattenJSONToString'
@@ -9,12 +9,21 @@ import {
   fetchWorkflow,
 } from '@src/infra/db/flowbuildDataSource'
 import esClient from '@src/infra/elasticsearch/client'
-import { indexProcess } from '@src/infra/elasticsearch/processIndex'
+import { indexProcessesBulk } from '@src/infra/elasticsearch/processIndex'
+
+let isRunning = false
 
 export async function indexFlowBuildProcesses() {
-  logger.info('Checking for finished processes...')
+  if (isRunning) {
+    logger.info('indexFlowBuildProcesses is already running, skipping new run')
+    return
+  }
+
+  logger.info('🚀 indexFlowBuildProcesses job started')
+  isRunning = true
 
   try {
+    logger.info('Checking for finished processes...')
     const elasticProcesses = await esClient.search<ProcessDocument>({
       index: envs.PROCESSES_INDEX,
       size: 10000,
@@ -28,7 +37,7 @@ export async function indexFlowBuildProcesses() {
       .map((hit) => hit._source?.id)
       .filter((id) => typeof id === 'string')
 
-    const processes = await fetchFinishedProcessesWithExceptions(
+    const processes: Process[] = await fetchFinishedProcessesWithExceptions(
       elasticProcessIds
     )
 
@@ -38,47 +47,79 @@ export async function indexFlowBuildProcesses() {
     }
 
     logger.info(`Found ${processes?.length} finished processes to index`)
+
+    const workflowCache: Record<string, GenericObject | undefined> = {}
+
+    let toIndex: ProcessDocument[] = []
+    let builtCount = 0
+
+    const BULK_INDEX_SIZE = 5
+
+    logger.info(
+      `Building ${processes.length} process documents (indexing every ${BULK_INDEX_SIZE} builds)`
+    )
+
+    let batchCount = 0
     for (const process of processes) {
-      const [statesResult, workflow] = await Promise.all([
-        fetchProcessStatesByProcessId(process.id),
-        fetchWorkflow(process.workflow_id),
-      ])
+      try {
+        const statesResult = await fetchProcessStatesByProcessId(process.id)
 
-      const finalBag = statesResult?.[statesResult?.length - 1]?.bag ?? {}
-      const finalActorData =
-        statesResult?.[statesResult?.length - 1]?.actor_data ?? {}
-      const history = mapStatesToHistory(statesResult)
+        let workflow = workflowCache[process.workflow_id]
+        if (!workflow) {
+          workflow = await fetchWorkflow(process.workflow_id)
+          workflowCache[process.workflow_id] = workflow
+        }
 
-      // Using JSON.stringify for now cause it showed better results than flattening, but we can revisit this later
-      // const finalBagStr = flattenJSONToString(finalBag)
-      // const finalActorDataStr = flattenJSONToString(finalActorData)
-      // const historyStr = flattenJSONToString(history)
+        const finalBag = statesResult?.[statesResult?.length - 1]?.bag ?? {}
+        const finalActorData =
+          statesResult?.[statesResult?.length - 1]?.actor_data ?? {}
+        const history = mapStatesToHistory(statesResult)
 
-      const finalBagStr = JSON.stringify(finalBag)
-      const finalActorDataStr = JSON.stringify(finalActorData)
-      const historyStr = JSON.stringify(history)
+        const mappedProcess: ProcessDocument = {
+          id: process.id,
+          workflow_id: process.workflow_id,
+          workflow_name: workflow?.name,
+          workflow_version: workflow?.version,
+          final_status: process.current_status,
+          started_at: statesResult?.[0]?.created_at,
+          finished_at: statesResult?.[statesResult?.length - 1]?.created_at,
+          final_actor_data: finalActorData,
+          final_actor_data_text: JSON.stringify(finalActorData),
+          final_bag: finalBag,
+          final_bag_text: JSON.stringify(finalBag),
+          history: history,
+          history_text: JSON.stringify(history),
+        }
 
-      const mappedProcess: ProcessDocument = {
-        id: process.id,
-        workflow_id: process.workflow_id,
-        workflow_name: workflow?.name,
-        workflow_version: workflow?.version,
-        final_status: process.current_status,
-        started_at: statesResult?.[0]?.created_at,
-        finished_at: statesResult?.[statesResult?.length - 1]?.created_at,
-        final_actor_data: finalActorData,
-        final_actor_data_text: finalActorDataStr,
-        final_bag: finalBag,
-        final_bag_text: finalBagStr,
-        history: history,
-        history_text: historyStr,
+        toIndex.push(mappedProcess)
+        builtCount++
+        batchCount++
+
+        if (batchCount >= BULK_INDEX_SIZE) {
+          logger.info(
+            `Built ${builtCount} / ${processes.length} process documents, indexing...`
+          )
+          const response = await indexProcessesBulk(toIndex)
+          logger.info(
+            `Bulk index response: ${response.succeeded}/${response.attempted} succeeded, ${response.failed} failed`
+          )
+
+          batchCount = 0
+          toIndex = []
+        }
+      } catch (err) {
+        logger.error('Error building/indexing process document', err)
       }
-
-      await indexProcess(mappedProcess)
     }
 
-    logger.info('Finished indexing processes')
+    logger.info(
+      `Finished indexing documents. Total indexed: ${builtCount} / ${processes.length}`
+    )
+
+    logger.info('✅ indexFlowBuildProcesses job finished')
   } catch (err) {
-    logger.error(`indexFlowBuildProcesses error: ${err}`)
+    logger.error(`❌ indexFlowBuildProcesses job error: ${err}`)
+  } finally {
+    isRunning = false
   }
 }

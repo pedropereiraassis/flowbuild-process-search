@@ -47,11 +47,73 @@ export async function indexProcess(processDocument: ProcessDocument) {
       index: envs.PROCESSES_INDEX,
       id: processDocument.id,
       document: processDocument,
-      refresh: true,
     })
 
     logger.info(`Indexed process: ${processDocument.id}`)
   } catch (err) {
     logger.error(`Indexing process error: ${processDocument.id} - `, err)
   }
+}
+
+export interface BulkIndexResult {
+  attempted: number
+  succeeded: number
+  failed: number
+}
+
+export async function indexProcessesBulk(
+  processDocuments: ProcessDocument[]
+): Promise<BulkIndexResult> {
+  const result: BulkIndexResult = { attempted: 0, succeeded: 0, failed: 0 }
+
+  if (!processDocuments || processDocuments.length === 0) return result
+
+  const body: ({ index: { _index: string; _id: string } } | ProcessDocument)[] =
+    []
+
+  for (const doc of processDocuments) {
+    body.push({ index: { _index: envs.PROCESSES_INDEX, _id: doc.id } })
+    body.push(doc)
+  }
+
+  result.attempted += processDocuments.length
+
+  try {
+    const resp = await esClient.bulk<ProcessDocument>({
+      refresh: false,
+      operations: body,
+    })
+
+    if (resp.errors) {
+      let failed = 0
+      let succeeded = 0
+
+      for (const item of resp.items) {
+        const op = Object.values(item)[0]
+        if (op && op.error) failed += 1
+        else succeeded += 1
+      }
+
+      result.failed += failed
+      result.succeeded += succeeded
+
+      logger.error('Bulk indexing had errors', { failed, succeeded })
+    } else {
+      result.succeeded += processDocuments.length
+
+      logger.info(`Bulk indexed ${processDocuments.length} processes`)
+    }
+  } catch (err) {
+    result.failed += processDocuments.length
+
+    logger.error('Bulk indexing error', err)
+  }
+
+  try {
+    await esClient.indices.refresh({ index: envs.PROCESSES_INDEX })
+  } catch (err) {
+    logger.warn('Failed to refresh index after bulk operations', err)
+  }
+
+  return result
 }
