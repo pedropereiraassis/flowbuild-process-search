@@ -5,9 +5,11 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
-    "dev": "nodemon --exec ts-node -r tsconfig-paths/register ./src/infra/api/server.ts",
+    "dev": "npm run services:up && npm run services:wait:for:elastic && nodemon --exec ts-node -r tsconfig-paths/register ./src/infra/api/server.ts",
     "format": "prettier --ignore-path .gitignore --write \"**/*.+(ts)\"",
     "lint": "eslint . --ext .ts",
+    "services:up": "docker compose up -d",
+    "services:wait:for:elastic": "ts-node -r tsconfig-paths/register ./src/infra/scripts/wait-for-elastic.ts",
     "start": "node dist/src/infra/api/server.js",
     "test": "jest --silent --runInBand --verbose"
   },
