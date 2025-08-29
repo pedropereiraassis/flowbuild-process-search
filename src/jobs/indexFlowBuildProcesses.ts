@@ -9,7 +9,7 @@ import {
   fetchWorkflow,
 } from '@src/infra/db/flowbuildDataSource'
 import esClient from '@src/infra/elasticsearch/client'
-import { indexProcessesBulk } from '@src/infra/elasticsearch/processIndex'
+import { indexProcess } from '@src/infra/elasticsearch/processIndex'
 
 let isRunning = false
 
@@ -50,16 +50,16 @@ export async function indexFlowBuildProcesses() {
 
     const workflowCache: Record<string, GenericObject | undefined> = {}
 
-    let toIndex: ProcessDocument[] = []
+    // let toIndex: ProcessDocument[] = []
     let builtCount = 0
 
-    const BULK_INDEX_SIZE = 5
+    // const BULK_INDEX_SIZE = 5
 
-    logger.info(
-      `Building ${processes.length} process documents (indexing every ${BULK_INDEX_SIZE} builds)`
-    )
+    // logger.info(
+    //   `Building ${processes.length} process documents (indexing every ${BULK_INDEX_SIZE} builds)`
+    // )
 
-    let batchCount = 0
+    // let batchCount = 0
     for (const process of processes) {
       try {
         const statesResult = await fetchProcessStatesByProcessId(process.id)
@@ -91,24 +91,26 @@ export async function indexFlowBuildProcesses() {
           history_text: JSON.stringify(history),
         }
 
-        toIndex.push(mappedProcess)
+        await indexProcess(mappedProcess)
+
+        // toIndex.push(mappedProcess)
         builtCount++
-        batchCount++
+        // batchCount++
 
-        if (batchCount >= BULK_INDEX_SIZE) {
-          logger.info(
-            `Built ${builtCount} / ${processes.length} process documents, indexing...`
-          )
-          const response = await indexProcessesBulk(toIndex)
-          logger.info(
-            `Bulk index response: ${response.succeeded}/${response.attempted} succeeded, ${response.failed} failed`
-          )
+        // if (batchCount >= BULK_INDEX_SIZE) {
+        //   logger.info(
+        //     `Built ${builtCount} / ${processes.length} process documents, indexing...`
+        //   )
+        //   const response = await indexProcessesBulk(toIndex)
+        //   logger.info(
+        //     `Bulk index response: ${response.succeeded}/${response.attempted} succeeded, ${response.failed} failed`
+        //   )
 
-          batchCount = 0
-          toIndex = []
-        }
+        //   batchCount = 0
+        //   toIndex = []
+        // }
       } catch (err) {
-        logger.error('Error building/indexing process document', err)
+        logger.error('Error indexing process document', err)
       }
     }
 
