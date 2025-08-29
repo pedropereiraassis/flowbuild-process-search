@@ -3,7 +3,10 @@ import { ProcessDocument } from '@src/config/types'
 import { HITS_MIN_SCORE, HITS_THRESHOLD } from '@src/config/constants'
 import { logger } from '@src/utils/logger'
 import esClient from '@src/infra/elasticsearch/client'
-import { buildRetrieverQueries } from '@src/infra/elasticsearch/queryBuilder'
+import {
+  buildQuery,
+  // buildRetrieverQueries
+} from '@src/infra/elasticsearch/queryBuilder'
 
 export interface SearchQueryInput {
   query: {
@@ -24,7 +27,13 @@ export async function searchProcessesIndex({
 }: SearchQueryInput) {
   const { finalBag, history, general } = query
 
-  const retrievers = buildRetrieverQueries({
+  // const retrievers = buildRetrieverQueries({
+  //   finalBag,
+  //   history,
+  //   general,
+  // })
+
+  const esQuery = buildQuery({
     finalBag,
     history,
     general,
@@ -38,12 +47,13 @@ export async function searchProcessesIndex({
       'final_actor_data_text',
       'history_text',
     ],
-    retriever: {
-      rrf: {
-        retrievers,
-        rank_window_size: 20,
-      },
-    },
+    query: esQuery,
+    // retriever: {
+    //   rrf: {
+    //     retrievers,
+    //     rank_window_size: 20,
+    //   },
+    // },
   }
 
   try {
@@ -58,8 +68,7 @@ export async function searchProcessesIndex({
 
     const hits = (result.hits?.hits || [])
       .filter(
-        (hit) =>
-          hit._score && hit._score >= minScore && hit._score >= cutoff
+        (hit) => hit._score && hit._score >= minScore && hit._score >= cutoff
       )
       .map((hit) => {
         const source = {

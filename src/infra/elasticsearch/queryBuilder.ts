@@ -4,7 +4,10 @@ https://www.elastic.co/docs/solutions/search/hybrid-semantic-text#hybrid-search-
 https://www.elastic.co/docs/reference/query-languages/query-dsl/query-dsl-bool-query#nested-bool-queries
 */
 
-import { RetrieverContainer } from '@elastic/elasticsearch/lib/api/types'
+import {
+  QueryDslQueryContainer,
+  RetrieverContainer,
+} from '@elastic/elasticsearch/lib/api/types'
 
 export interface RetrieverQueryInput {
   finalBag?: string
@@ -85,4 +88,43 @@ export function buildRetrieverQueries({
   }
 
   return retrievers
+}
+
+export function buildQuery({
+  finalBag,
+  history,
+  general,
+}: RetrieverQueryInput) {
+  const query: QueryDslQueryContainer = {}
+
+  if (general) {
+    query.bool = {
+      should: [
+        {
+          match: {
+            final_bag_text: general,
+          },
+        },
+        {
+          match: {
+            history_text: general,
+          },
+        },
+      ],
+    }
+  }
+
+  if (finalBag) {
+    query.match = {
+      final_bag_text: finalBag,
+    }
+  }
+
+  if (history) {
+    query.match = {
+      history_text: history,
+    }
+  }
+
+  return query
 }
