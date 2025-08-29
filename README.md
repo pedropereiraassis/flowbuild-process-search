@@ -19,18 +19,17 @@ This project demonstrates a viable and scalable approach for searching finished 
 - Docker and Docker Compose
 - FlowBuild Database available and accessible through the connection variables in `.env.development`
 
-### 1. Run Elasticsearch and Kibana with Docker
-
-Run elasticsearch and Kibana services:
-
-```bash
-docker compose up -d
-```
-
-### 2. Install dependencies and run the service
+### 1. Install dependencies and run the service
 
 ```bash
 npm install
+```
+
+### 2. Run Elasticsearch, Kibana with Docker and Search Service (on host machine)
+
+Run:
+
+```bash
 npm run dev
 ```
 
@@ -325,8 +324,8 @@ The service exposes a REST API endpoint to perform searches on indexed FlowBuild
 
 - **User Interface:** Develop a simple web interface or integrate with existing FlowBuild Studio platform to provide users with an easy way to perform searches and view results.
 
-
 ## Demo
+
 If you want to see a demo of the search service in action, check out this video:
 
 [Download/view demo video](public/demo.mp4)
