@@ -1,6 +1,8 @@
-import { GenericObject } from "@src/config/types"
+import { GenericObject } from '@src/config/types'
 
-export function flattenJSONToString(data: GenericObject | GenericObject[]): string {
+export function flattenJSONToString(
+  data: GenericObject | GenericObject[]
+): string {
   if (typeof data === 'object' && data !== null) {
     if (Array.isArray(data)) {
       return data.map((item) => flattenJSONToString(item)).join(' ')

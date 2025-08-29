@@ -1,5 +1,10 @@
 import _ from 'lodash'
-import { DiffStep, GenericObject, HistoryStep, ProcessState } from '@src/config/types'
+import {
+  DiffStep,
+  GenericObject,
+  HistoryStep,
+  ProcessState,
+} from '@src/config/types'
 
 export function diffObjects(
   prev: GenericObject,

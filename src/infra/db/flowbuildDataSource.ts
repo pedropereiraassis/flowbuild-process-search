@@ -5,7 +5,7 @@ export async function fetchFinishedProcessesWithExceptions(
 ) {
   return await database
     .table('process')
-    .whereIn('current_status', ['finished', 'interrupted'])
+    .whereIn('current_status', ['finished', 'interrupted', 'error', 'expired'])
     .whereNotIn('id', exceptionIds)
     .orderBy('created_at', 'desc')
 }
