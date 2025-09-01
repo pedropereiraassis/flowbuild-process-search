@@ -1,12 +1,14 @@
-import { ProcessDocument, Process } from '@src/config/types'
+import { Process } from '@src/config/types'
 import { logger } from '@src/utils/logger'
-import { mapStatesToHistory } from '@src/utils/processDiff'
 import {
-  fetchFinishedProcessesOnSearchTable,
+  fetchKVProcesses,
   fetchFinishedProcessesWithExceptions,
   fetchProcessStatesByProcessId,
-  insertProcessOnSearchTable,
+  insertKVProcess,
 } from '@src/infra/db/flowbuildDataSource'
+import { flattenToLeaves } from '@src/utils/flattenToLeaves'
+import { normalizeValueToText } from '@src/utils/normalizeValueToText'
+import { leafKeyFromPath } from '@src/utils/leafKeyFromPath'
 
 let isRunning = false
 
@@ -21,7 +23,7 @@ export async function indexFlowBuildProcesses() {
 
   try {
     logger.info('Checking for finished processes...')
-    const indexedProcesses = await fetchFinishedProcessesOnSearchTable()
+    const indexedProcesses = await fetchKVProcesses()
 
     const processes: Process[] = await fetchFinishedProcessesWithExceptions(
       indexedProcesses.map((p) => p.id)
@@ -34,64 +36,95 @@ export async function indexFlowBuildProcesses() {
 
     logger.info(`Found ${processes?.length} finished processes to index`)
 
-    // let toIndex: ProcessDocument[] = []
-    let builtCount = 0
+    let indexedCount = 0
 
-    // const BULK_INDEX_SIZE = 5
-
-    // logger.info(
-    //   `Building ${processes.length} process documents (indexing every ${BULK_INDEX_SIZE} builds)`
-    // )
-
-    // let batchCount = 0
     for (const process of processes) {
       try {
+        logger.info(`Indexing process document ${process.id}`)
+
         const statesResult = await fetchProcessStatesByProcessId(process.id)
 
-        const finalBag = statesResult?.[statesResult?.length - 1]?.bag ?? {}
-        const finalActorData =
-          statesResult?.[statesResult?.length - 1]?.actor_data ?? {}
-        const history = mapStatesToHistory(statesResult)
+        const map = new Map<
+          string,
+          {
+            key: string
+            path: string
+            value: string
+            process_id: string
+            workflow_id: string
+            steps: { state_id: string; node_id: string; step_number: number }[]
+          }
+        >()
 
-        const mappedProcess: ProcessDocument = {
-          id: process.id,
-          workflow_id: process.workflow_id,
-          final_status: process.current_status,
-          started_at: statesResult?.[0]?.created_at,
-          finished_at: statesResult?.[statesResult?.length - 1]?.created_at,
-          final_actor_data: finalActorData,
-          final_actor_data_text: JSON.stringify(finalActorData),
-          final_bag: finalBag,
-          final_bag_text: JSON.stringify(finalBag),
-          history: history,
-          history_text: JSON.stringify(history),
+        for (const state of statesResult) {
+          const buckets = [
+            { name: 'bag', obj: state.bag },
+            { name: 'result', obj: state.result },
+            { name: 'external_input', obj: state.external_input },
+          ]
+
+          for (const b of buckets) {
+            if (!b.obj) continue
+
+            // flatten to leaf paths with array indices
+            const leaves = flattenToLeaves(b.obj, b.name)
+
+            for (const { path, value } of leaves) {
+              const key = leafKeyFromPath(path) // e.g., userId
+              const value_text = normalizeValueToText(value)
+
+              const stepObj = {
+                state_id: state.id || null,
+                node_id: state.node_id || null,
+                step_number: state.step_number,
+              }
+
+              const mapKey = `${process.id}|${path}|${value}`
+              if (!map.has(mapKey)) {
+                map.set(mapKey, {
+                  key,
+                  path,
+                  value: value_text,
+                  process_id: process.id,
+                  workflow_id: process.workflow_id,
+                  steps: [stepObj],
+                })
+              } else {
+                const entry = map.get(mapKey)!
+
+                if (
+                  !entry.steps.some(
+                    (s) =>
+                      (s.state_id && s.state_id === stepObj.state_id) ||
+                      (s.node_id === stepObj.node_id &&
+                        s.step_number === stepObj.step_number)
+                  )
+                ) {
+                  entry.steps.push(stepObj)
+                }
+              }
+            }
+          }
         }
 
-        await insertProcessOnSearchTable(mappedProcess)
+        logger.info(
+          `Indexing ${map.size} key:value entries for process ${process.id}`
+        )
+        for (const [, doc] of map) {
+          await insertKVProcess(doc)
+        }
 
-        // toIndex.push(mappedProcess)
-        builtCount++
-        // batchCount++
-
-        // if (batchCount >= BULK_INDEX_SIZE) {
-        //   logger.info(
-        //     `Built ${builtCount} / ${processes.length} process documents, indexing...`
-        //   )
-        //   const response = await indexProcessesBulk(toIndex)
-        //   logger.info(
-        //     `Bulk index response: ${response.succeeded}/${response.attempted} succeeded, ${response.failed} failed`
-        //   )
-
-        //   batchCount = 0
-        //   toIndex = []
-        // }
+        indexedCount++
+        logger.info(
+          `Indexed process ${process.id} (${indexedCount}/${processes.length})`
+        )
       } catch (err) {
-        logger.error('Error indexing process document', err)
+        logger.error(`Error indexing process document ${process.id}`, err)
       }
     }
 
     logger.info(
-      `Finished indexing documents. Total indexed: ${builtCount} / ${processes.length}`
+      `Finished indexing documents. Indexed processes: ${processes.length}`
     )
 
     logger.info('✅ indexFlowBuildProcesses job finished')

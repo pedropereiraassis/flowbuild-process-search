@@ -44,3 +44,38 @@ export function validateSearchRequest(
 
   return next()
 }
+
+export function validateSearchKeyValueRequest(
+  req: Request,
+  res: Response,
+  next: () => void
+) {
+  const schema = z.object({
+    query: z
+      .object({
+        key: z.string().min(1).optional(),
+        value: z.string().min(1).optional(),
+        path: z.string().min(1).optional(),
+      })
+      .superRefine((data, ctx) => {
+        const definedProps = [data.key, data.value, data.path].filter(
+          (val) => val !== undefined
+        )
+
+        if (definedProps.length === 0) {
+          ctx.addIssue({
+            code: 'custom',
+            message: 'One of key, value, or path must be present.',
+          })
+        }
+      }),
+    limit: z.number().int().optional(),
+  })
+
+  const parsed = schema.safeParse(req.body)
+  if (!parsed.success) {
+    return res.status(400).json(parsed.error.issues)
+  }
+
+  return next()
+}
