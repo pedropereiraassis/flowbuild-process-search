@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
-    "dev": "npm run services:up && npm run services:wait:for:elastic && nodemon --exec ts-node -r tsconfig-paths/register ./src/infra/api/server.ts",
+    "dev": "nodemon --exec ts-node -r tsconfig-paths/register ./src/infra/api/server.ts",
     "format": "prettier --ignore-path .gitignore --write \"**/*.+(ts)\"",
     "lint": "eslint . --ext .ts",
     "server:dev": "nodemon --exec ts-node -r tsconfig-paths/register ./src/infra/api/server.ts",

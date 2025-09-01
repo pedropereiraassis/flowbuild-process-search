@@ -1,15 +1,12 @@
-import { envs } from '@src/config/envs'
-import { ProcessDocument, Process, GenericObject } from '@src/config/types'
+import { ProcessDocument, Process } from '@src/config/types'
 import { logger } from '@src/utils/logger'
 import { mapStatesToHistory } from '@src/utils/processDiff'
-// import { flattenJSONToString } from '@src/utils/flattenJSONToString'
 import {
+  fetchFinishedProcessesOnSearchTable,
   fetchFinishedProcessesWithExceptions,
   fetchProcessStatesByProcessId,
-  fetchWorkflow,
+  insertProcessOnSearchTable,
 } from '@src/infra/db/flowbuildDataSource'
-import esClient from '@src/infra/elasticsearch/client'
-import { indexProcess } from '@src/infra/elasticsearch/processIndex'
 
 let isRunning = false
 
@@ -24,21 +21,10 @@ export async function indexFlowBuildProcesses() {
 
   try {
     logger.info('Checking for finished processes...')
-    const elasticProcesses = await esClient.search<ProcessDocument>({
-      index: envs.PROCESSES_INDEX,
-      size: 10000,
-      _source_includes: ['id'],
-      query: {
-        match_all: {},
-      },
-    })
-
-    const elasticProcessIds = elasticProcesses.hits.hits
-      .map((hit) => hit._source?.id)
-      .filter((id) => typeof id === 'string')
+    const indexedProcesses = await fetchFinishedProcessesOnSearchTable()
 
     const processes: Process[] = await fetchFinishedProcessesWithExceptions(
-      elasticProcessIds
+      indexedProcesses.map((p) => p.id)
     )
 
     if (processes?.length === 0) {
@@ -47,8 +33,6 @@ export async function indexFlowBuildProcesses() {
     }
 
     logger.info(`Found ${processes?.length} finished processes to index`)
-
-    const workflowCache: Record<string, GenericObject | undefined> = {}
 
     // let toIndex: ProcessDocument[] = []
     let builtCount = 0
@@ -64,12 +48,6 @@ export async function indexFlowBuildProcesses() {
       try {
         const statesResult = await fetchProcessStatesByProcessId(process.id)
 
-        let workflow = workflowCache[process.workflow_id]
-        if (!workflow) {
-          workflow = await fetchWorkflow(process.workflow_id)
-          workflowCache[process.workflow_id] = workflow
-        }
-
         const finalBag = statesResult?.[statesResult?.length - 1]?.bag ?? {}
         const finalActorData =
           statesResult?.[statesResult?.length - 1]?.actor_data ?? {}
@@ -78,8 +56,6 @@ export async function indexFlowBuildProcesses() {
         const mappedProcess: ProcessDocument = {
           id: process.id,
           workflow_id: process.workflow_id,
-          workflow_name: workflow?.name,
-          workflow_version: workflow?.version,
           final_status: process.current_status,
           started_at: statesResult?.[0]?.created_at,
           finished_at: statesResult?.[statesResult?.length - 1]?.created_at,
@@ -91,7 +67,7 @@ export async function indexFlowBuildProcesses() {
           history_text: JSON.stringify(history),
         }
 
-        await indexProcess(mappedProcess)
+        await insertProcessOnSearchTable(mappedProcess)
 
         // toIndex.push(mappedProcess)
         builtCount++

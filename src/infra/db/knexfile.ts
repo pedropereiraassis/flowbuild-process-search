@@ -1,5 +1,5 @@
 import knex, { Knex } from 'knex'
-import { envs } from '@src/config/envs'
+import { envs } from '../../config/envs'
 
 export const knexConfig: Knex.Config = {
   client: 'pg',
